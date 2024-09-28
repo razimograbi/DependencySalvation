@@ -159,28 +159,28 @@ public class DependencyGraphBuilder
             // Check for specific IEnumerable implementations
             if (type.GetGenericTypeDefinition() == typeof(List<>))
             {
-                sb.AppendLine($"{variableName} = new List<{genericArgumentType.Name}>();");
+                sb.AppendLine($"var {variableName} = new List<{genericArgumentType.Name}>();");
                 instance = Activator.CreateInstance(typeof(List<>).MakeGenericType(genericArgumentType));
             }
             else if (type.GetGenericTypeDefinition() == typeof(HashSet<>))
             {
-                sb.AppendLine($"{variableName} = new HashSet<{genericArgumentType.Name}>();");
+                sb.AppendLine($"var {variableName} = new HashSet<{genericArgumentType.Name}>();");
                 instance = Activator.CreateInstance(typeof(HashSet<>).MakeGenericType(genericArgumentType));
             }
             else if (type.GetGenericTypeDefinition() == typeof(Queue<>))
             {
-                sb.AppendLine($"{variableName} = new Queue<{genericArgumentType.Name}>();");
+                sb.AppendLine($"var {variableName} = new Queue<{genericArgumentType.Name}>();");
                 instance = Activator.CreateInstance(typeof(Queue<>).MakeGenericType(genericArgumentType));
             }
             else if (type.GetGenericTypeDefinition() == typeof(Stack<>))
             {
-                sb.AppendLine($"{variableName} = new Stack<{genericArgumentType.Name}>();");
+                sb.AppendLine($"var {variableName} = new Stack<{genericArgumentType.Name}>();");
                 instance = Activator.CreateInstance(typeof(Stack<>).MakeGenericType(genericArgumentType));
             }
             else
             {
                 // For other IEnumerable implementations, try to create an instance directly
-                sb.AppendLine($"{variableName} = new {type.Name}<{genericArgumentType.Name}>();");
+                sb.AppendLine($"var {variableName} = new {type.Name}<{genericArgumentType.Name}>();");
                 instance = Activator.CreateInstance(type);
             }
         }
