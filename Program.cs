@@ -147,11 +147,51 @@ public class DependencyGraphBuilder
 
     private object CreateInstanceWithEmptyConstructor(Type type, StringBuilder sb)
     {
-        var instance = Activator.CreateInstance(type);
-        var variableName = GenerateVariableName(type);
-        objectToVariableName[instance] = variableName;
+        string variableName = "";
+        object instance;
 
-        sb.AppendLine($"{variableName} = new Mock<{type.Name}>();");
+        if (type.IsGenericType && (typeof(IEnumerable<>).IsAssignableFrom(type.GetGenericTypeDefinition()) ||
+                                   type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>))))
+        {
+            var genericArgumentType = type.GetGenericArguments()[0];
+            variableName = $"_empty{type.Name.Substring(0, type.Name.Length - 2)}Of{genericArgumentType.Name}_{mockCounter++}";
+
+            // Check for specific IEnumerable implementations
+            if (type.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                sb.AppendLine($"{variableName} = new List<{genericArgumentType.Name}>();");
+                instance = Activator.CreateInstance(typeof(List<>).MakeGenericType(genericArgumentType));
+            }
+            else if (type.GetGenericTypeDefinition() == typeof(HashSet<>))
+            {
+                sb.AppendLine($"{variableName} = new HashSet<{genericArgumentType.Name}>();");
+                instance = Activator.CreateInstance(typeof(HashSet<>).MakeGenericType(genericArgumentType));
+            }
+            else if (type.GetGenericTypeDefinition() == typeof(Queue<>))
+            {
+                sb.AppendLine($"{variableName} = new Queue<{genericArgumentType.Name}>();");
+                instance = Activator.CreateInstance(typeof(Queue<>).MakeGenericType(genericArgumentType));
+            }
+            else if (type.GetGenericTypeDefinition() == typeof(Stack<>))
+            {
+                sb.AppendLine($"{variableName} = new Stack<{genericArgumentType.Name}>();");
+                instance = Activator.CreateInstance(typeof(Stack<>).MakeGenericType(genericArgumentType));
+            }
+            else
+            {
+                // For other IEnumerable implementations, try to create an instance directly
+                sb.AppendLine($"{variableName} = new {type.Name}<{genericArgumentType.Name}>();");
+                instance = Activator.CreateInstance(type);
+            }
+        }
+        else
+        {
+            instance = Activator.CreateInstance(type);
+            variableName = GenerateVariableName(type);
+            sb.AppendLine($"{variableName} = new Mock<{type.Name}>();");
+        }
+
+        objectToVariableName[instance] = variableName;
         return instance;
     }
 
@@ -168,6 +208,7 @@ public class DependencyGraphBuilder
 
         var parameterStrings = parameters.Select(GetParameterString).ToArray();
         sb.AppendLine($"{variableName} = new Mock<{type.Name}>({string.Join(", ", parameterStrings)});");
+
         return instance;
     }
 
@@ -176,16 +217,15 @@ public class DependencyGraphBuilder
         var constructor = TypeUtil.GetPreferredConstructor(type);
         var instance = constructor.Invoke(parameters);
 
-        // Generate the variable name
         var variableName = GenerateVariableName(type, isRootNode);
         objectToVariableName[instance] = variableName;
 
-        // Generate parameter string representations
         var parameterStrings = parameters
-            .Select(p => objectToVariableName.TryGetValue(p, out var name) ? $"{name}.Object" : GetParameterString(p))
-            .ToArray();
+                .Select(p => objectToVariableName.TryGetValue(p, out var name)
+                    ? (name.StartsWith("_mock") ? $"{name}.Object" : name)
+                    : GetParameterString(p))
+                .ToArray();
 
-        // Append the appropriate instantiation string
         sb.AppendLine(CreateInstantiationString(type, variableName, parameterStrings, isRootNode));
 
         return instance;
@@ -210,7 +250,7 @@ public class DependencyGraphBuilder
 
     private string GetParameterString(object parameter)
     {
-        if (parameter == null) return "null";
+        if (parameter is null) return "null";
         if (parameter is string) return $"\"{parameter}\"";
         if (parameter is char) return $"'{parameter}'";
         return parameter.ToString();
@@ -222,7 +262,7 @@ public class Program
     public static void Main()
     {
         var builder = new DependencyGraphBuilder();
-        var graph = builder.BuildDependencyGraph(typeof(MainApplication));
+        var graph = builder.BuildDependencyGraph(typeof(SystemOrchestrator));
         Console.WriteLine("Constructing dependencies:");
         var result = builder.ConstructDependencies(graph);
     }
@@ -231,125 +271,42 @@ public class Program
 // Example classes for testing
 
 
-public interface ICustomerService
+// Interfaces
+public interface IDataProcessor { }
+public interface ILogger { }
+public interface INetworkManager { }
+public interface ISecurityProvider { }
+
+// First class with two constructors
+public class ConfigurationManager
 {
-    void AddCustomer(string name);
-    string GetCustomerDetails(int customerId);
+    public ConfigurationManager() { }
+    public ConfigurationManager(string configPath) { }
 }
 
-public interface IOrderService
+// Second class implementing one interface
+public class DataHandler : IDataProcessor
 {
-    void PlaceOrder(int orderId, string product);
-    string GetOrderStatus(int orderId);
+    public DataHandler(List<string> dataItems) { }
 }
 
-public interface INotificationService
+// Third class with multiple dependencies
+public class ApplicationCore
 {
-    void SendNotification(string message);
-    string GetNotificationStatus(int notificationId);
+    public ApplicationCore(IDataProcessor dataProcessor, ILogger logger, ConfigurationManager config, DataHandler dataHandler, long number, HashSet<int> set) { }
 }
 
-
-public class PaymentProcessor
+// Final class incorporating all elements
+public class SystemOrchestrator
 {
-    private int _transactionNumber;
-    private char _currency;
-    private decimal _amount;
-    private readonly INotificationService _notificationService;
-
-    public PaymentProcessor(int transactionNumber, char currency, decimal amount, INotificationService notificationService)
-    {
-        _transactionNumber = transactionNumber;
-        _currency = currency;
-        _amount = amount;
-        _notificationService = notificationService;
-    }
-
-    public void ProcessPayment()
-    {
-        // Payment logic
-        _notificationService.SendNotification($"Payment of {_amount} {_currency} processed for transaction {_transactionNumber}");
-    }
-}
-
-public class UserManager
-{
-    private string _userName;
-
-    public UserManager(string userName)
-    {
-        _userName = userName;
-    }
-
-    public void UpdateUserName(string newUserName)
-    {
-        _userName = newUserName;
-    }
-
-    public string GetUserName()
-    {
-        return _userName;
-    }
-}
-
-public class EcommerceSystem
-{
-    private readonly ICustomerService _customerService;
-    private readonly IOrderService _orderService;
-    private readonly PaymentProcessor _paymentProcessor;
-
-    public EcommerceSystem(ICustomerService customerService, IOrderService orderService, PaymentProcessor paymentProcessor)
-    {
-        _customerService = customerService;
-        _orderService = orderService;
-        _paymentProcessor = paymentProcessor;
-    }
-
-    public void ProcessNewOrder(int customerId, int orderId, string product, decimal paymentAmount)
-    {
-        _customerService.AddCustomer($"Customer {customerId}");
-        _orderService.PlaceOrder(orderId, product);
-        _paymentProcessor.ProcessPayment();
-    }
-}
-
-public class EmptyUtility
-{
-    public void DoNothing()
-    {
-        // Literally does nothing.
-    }
-}
-
-public class MainApplication
-{
-    private readonly ICustomerService _customerService;
-    private readonly IOrderService _orderService;
-    private readonly INotificationService _notificationService;
-    private readonly PaymentProcessor _paymentProcessor;
-    private readonly UserManager _userManager;
-    private readonly EcommerceSystem _ecommerceSystem;
-    private readonly EmptyUtility _emptyUtility;
-
-    // Constructor with six dependencies
-    public MainApplication(ICustomerService customerService, IOrderService orderService, INotificationService notificationService,
-                           PaymentProcessor paymentProcessor, UserManager userManager,
-                           EcommerceSystem ecommerceSystem, EmptyUtility emptyUtility)
-    {
-        _customerService = customerService;
-        _orderService = orderService;
-        _notificationService = notificationService;
-        _paymentProcessor = paymentProcessor;
-        _userManager = userManager;
-        _ecommerceSystem = ecommerceSystem;
-        _emptyUtility = emptyUtility;
-    }
-
-    public void Start()
-    {
-        _customerService.AddCustomer("John Doe");
-        _orderService.PlaceOrder(1, "Laptop");
-        _paymentProcessor.ProcessPayment();
-        _emptyUtility.DoNothing();
-    }
+    public SystemOrchestrator(
+        IDataProcessor dataProcessor,
+        ILogger logger,
+        INetworkManager networkManager,
+        ISecurityProvider securityProvider,
+        ConfigurationManager configManager,
+        DataHandler dataHandler,
+        List<ApplicationCore> appCore 
+    )
+    { }
 }
