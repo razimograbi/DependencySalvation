@@ -9,12 +9,11 @@ This project implements an intelligent Dependency Graph Generator in C#. It anal
 ## Key Features
 
 ### Automated Dependency Analysis
-- **Intelligent Categorization**: The generator automatically categorizes dependencies into leaf nodes and parent nodes based on their characteristics.
+- **Intelligent Categorization**: The generator automatically categorizes dependencies into leaf nodes and parent nodes.
 - **Recursive Analysis**: Handles nested dependencies, creating a complete graph of the entire dependency structure.
 
 ### Smart Mocking
 - **Automatic Mock Generation**: Uses the Moq framework to automatically create mocked instances of all dependencies.
-- **Contextual Mocking**: Generates mocks that are aware of their place in the dependency hierarchy.
 
 ### Graph Construction
 - **Leaf Nodes**: Identified for:
@@ -23,7 +22,7 @@ This project implements an intelligent Dependency Graph Generator in C#. It anal
   - Classes with only primitive type parameters in their constructors
 - **Node Children**: Created for classes with at least one non-primitive dependency.
 
-### Efficient Traversal
+### Traversal
 - **Depth-First Approach**: Traverses the graph from the deepest left-most child, and making sure that all dependencies are properly initialized before being used by their parents.
 
 ## Benefits for Testing
