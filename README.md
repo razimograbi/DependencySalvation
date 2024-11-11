@@ -1,5 +1,11 @@
 # Dependency Graph Generator for C# - Simplifying Test Setup
 
+## ⚠️ Warning
+
+This program isn't ready for production use. Please exercise caution when using it, as it may contain untested features or bugs. The production-ready version is private and not available in this repository.
+
+
+
 ## Project Goal
 The primary goal of this Dependency Graph Generator is to significantly reduce the time and effort required for setting up unit tests in C# projects. By automatically analyzing and mocking complex dependency structures, it aims to make the testing proccess easier, and make developers focus on writing meaningful tests rather than wrestling with dependency setup.
 
