@@ -2,41 +2,51 @@
 
 ## ⚠️ Warning
 
-This program isn't ready for production use. Please exercise caution when using it, as it may contain untested features or bugs. The production-ready version is private and not available in this repository.
+This program isn't ready for production use. Please exercise caution when using it, as it may contain untested features or bugs. **The production-ready version is private** and not available in this repository.
 
 
 
 ## Project Goal
-The primary goal of this Dependency Graph Generator is to significantly reduce the time and effort required for setting up unit tests in C# projects. By automatically analyzing and mocking complex dependency structures, it aims to make the testing proccess easier, and make developers focus on writing meaningful tests rather than wrestling with dependency setup.
+The primary goal of this Dependency Graph Generator is to significantly reduce the time and effort required for setting up unit tests in C# projects. Expically Huge projects with many Dependency injections, By automatically analyzing and mocking complex dependency structures, I aim to make the testing proccess easier, and make developers focus on writing meaningful tests rather than Struggling with dependency setup.
 
 ## Overview
-This project implements an intelligent Dependency Graph Generator in C#. It analyzes a class's dependencies, constructs a comprehensive graph representation, and automatically generates mocked instances of all dependencies.
+This project implements an intelligent Way to automattically create Mocked Instances Of the class using Reflection.
 
-## Key Features
 
-### Automated Dependency Analysis
-- **Intelligent Categorization**: The generator automatically categorizes dependencies into leaf nodes and parent nodes.
-- **Recursive Analysis**: Handles nested dependencies, creating a complete graph of the entire dependency structure.
+## Usage Example 1 (Production Example XUNIT)
+```csharp
+public class OrderCancellationSimulationServiceTests
+{
+    private readonly AutomaticallyMockedClass _mocker;
+    private readonly OrderCancellationSimulationService _sut;
 
-### Smart Mocking
-- **Automatic Mock Generation**: Uses the Moq framework to automatically create mocked instances of all dependencies.
+    public OrderCancellationSimulationServiceTests()
+    {
+        _mocker = AutoClassMocker<OrderCancellationSimulationService>.DeepMockDependencies();
+        _sut = _mocker.GetSutInstance<OrderCancellationSimulationService>();
+    }
 
-### Graph Construction
-- **Leaf Nodes**: Identified for:
-  - Interfaces
-  - Classes with parameterless constructors
-  - Classes with only primitive type parameters in their constructors
-- **Node Children**: Created for classes with at least one non-primitive dependency.
+    [Fact]
+    public async Task SimulateCancellationAsync_Should..._when..(){
+             var cancellationMock = _mocker.GetMockedDependency<IExampleRepo>();
 
-### Traversal
-- **Depth-First Approach**: Traverses the graph from the deepest left-most child, and making sure that all dependencies are properly initialized before being used by their parents.
+       cancellationMock
+           .Setup(x => x.GetMethodExampleAsync(It.IsAny<int>()))
+           .ReturnsAsync(new CustomExample { IsActive = true, IsDefault = false });
 
-## Benefits for Testing
-- **Reduced Setup Time**: Eliminates the need to manually mock and set up complex dependency chains.
-- **Increased Test Coverage**: Makes it easier to test classes with numerous or deeply nested dependencies.
-- **Improved Test Maintainability**: Changes in class dependencies are automatically reflected in the generated mocks, reducing the need to update test setups manually.
+      var request = new ExampleRequest(price : 200);
+    
+      var res = await _sut.SimulateCancellationAsync(request);
+       Assert.NotNull(res);
+       Assert.NotNull(res.InnerObject);
+       Assert.Equal(250, res.InnerObject.FinalPriceExample);
+    }
 
-## Usage Example
+}
+
+```
+
+## Usage Example 2
 ### We want to test the SystemOrchestrator class.
 ```csharp
 
